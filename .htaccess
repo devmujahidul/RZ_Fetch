@@ -1,0 +1,17 @@
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/bdstream/mewzone.bdstream.site"
+PassengerBaseURI "/"
+PassengerNodejs "/home/bdstream/nodevenv/mewzone.bdstream.site/22/bin/node"
+PassengerAppType node
+PassengerStartupFile src/server.js
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+<IfModule Litespeed>
+SetEnv PORT 3005
+SetEnv EXPIRED_VIDEO_URL http://bdstream.site/playback_video/fall.mp4
+SetEnv PLAYLIST_URL https://raw.githubusercontent.com/devmujahidul/MeowZone/refs/heads/main/playlist.json
+SetEnv PROXY_FALLBACK_MODE wrapper
+SetEnv PROXY_SEGMENTS true
+SetEnv SUBSCRIPTION_URL_TEMPLATE https://backend.bdstream.site/api/smarttv/subscription-status/{id}
+</IfModule>
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END
