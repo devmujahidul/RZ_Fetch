@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 // cache removed: always fetch fresh playlist
 const PROXY_SEGMENTS = String(process.env.PROXY_SEGMENTS || '').toLowerCase() === 'true';
 const NVSIONBD_M3U = process.env.NVSIONBD_M3U;
+const BDIX_M3U = process.env.BDIX_M3U;
 const CACHE_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS || 60);
 
 const app = express();
@@ -100,6 +101,25 @@ async function fetchNvisionM3U() {
   const text = await res.text();
   nvisionCache = { text, expiresAt: now + CACHE_TTL_SECONDS * 1000 };
   return text;
+}
+
+let bdixCache = { data: null, expiresAt: 0 };
+async function fetchBdixChannels() {
+  if (!BDIX_M3U) throw new Error('BDIX_M3U env not set');
+  const now = Date.now();
+  if (bdixCache.data && bdixCache.expiresAt > now) return bdixCache.data;
+  console.log(`[bdix] fetching channels from ${BDIX_M3U}`);
+  const res = await fetch(BDIX_M3U, { timeout: 10000 });
+  if (!res.ok) throw new Error(`Failed to fetch BDIX_M3U: ${res.status}`);
+  const data = await res.json();
+  bdixCache = { data, expiresAt: now + CACHE_TTL_SECONDS * 1000 };
+  return data;
+}
+
+function findBdixChannelByNumber(bdixData, number) {
+  if (!bdixData || !Array.isArray(bdixData.channels)) return null;
+  const numStr = String(number);
+  return bdixData.channels.find(ch => String(ch.number) === numStr);
 }
 
 function findStreamByXuiId(m3uText, xuiId) {
@@ -316,6 +336,37 @@ app.get('/nvision/:xuiId', async (req, res) => {
     return res.redirect(streamUrl);
   } catch (err) {
     console.error('[nvision] error handling request:', err.message || err);
+    return res.status(500).json({ error: 'internal server error' });
+  }
+});
+
+app.get('/bdix/:number', async (req, res) => {
+  const chnum = Number(req.params.number);
+  if (Number.isNaN(chnum)) return res.status(400).json({ error: 'invalid channel number' });
+
+  const subscriber = req.query.subscriber;
+  if (!subscriber) return res.status(400).json({ error: 'subscriber required' });
+
+  console.log(`[bdix] request number=${req.params.number} subscriber=${subscriber} from ${req.ip}`);
+
+  try {
+    const active = await checkSubscription(subscriber);
+    if (!active) {
+      console.log('[bdix] subscriber inactive -> redirecting to expired video');
+      return res.redirect(EXPIRED_VIDEO_URL);
+    }
+
+    const bdixData = await fetchBdixChannels();
+    const channel = findBdixChannelByNumber(bdixData, chnum);
+    if (!channel) {
+      console.warn(`[bdix] channel #${chnum} not found`);
+      return res.status(404).json({ error: 'channel not found' });
+    }
+
+    console.log(`[bdix] channel found #${chnum} -> name="${channel.name}" -> redirecting subscriber=${subscriber}`);
+    return res.redirect(channel.m3u8_url);
+  } catch (err) {
+    console.error('[bdix] error handling request:', err.message || err);
     return res.status(500).json({ error: 'internal server error' });
   }
 });
