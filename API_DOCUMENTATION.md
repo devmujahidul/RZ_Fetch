@@ -161,12 +161,12 @@ GET /bdix/11?subscriber=user789
 
 ### 4. Direct URL Endpoint
 
-#### `GET /all/*/direct`
+#### `GET /all/direct` (query)
 
-Generic endpoint for direct URL streaming with optional subscription validation.
+Generic endpoint for direct URL streaming with optional subscription validation. Target URL is passed via query parameter (`u` or `url`) so no manual encoding is needed.
 
 **Parameters:**
-- The URL path after `/all/` (wildcard) - Target stream URL (required, URL-encoded)
+- `u` or `url` (query, required) - Target stream URL (server will decode)
 - `m3u` (query, optional) - Set to `1` or `true` to enforce subscription check
 - `subscriber` (query, optional) - Subscriber ID (required if `m3u=1`)
 
@@ -180,10 +180,10 @@ Generic endpoint for direct URL streaming with optional subscription validation.
 
 ```bash
 # Direct redirect (no subscription check)
-GET /all/*/direct/http://example.com/stream.m3u8
+GET /all/direct?u=https://example.com/stream.m3u8
 
 # With subscription check
-GET /all/*/direct/http://example.com/stream.m3u8?m3u=1&subscriber=user123
+GET /all/direct?u=https://example.com/stream.m3u8&m3u=1&subscriber=user123
 ```
 
 ---

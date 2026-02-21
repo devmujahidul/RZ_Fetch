@@ -282,9 +282,9 @@ async function proxyM3U8(req, res, sourceUrl) {
   }
 }
 
-// Direct m3u8 redirect endpoint with subscription check
-app.get('/all/*/direct', async (req, res) => {
-  const rawTarget = req.params[0];
+// Direct m3u8 redirect endpoint with subscription check (query-based target only)
+app.get('/all/direct', async (req, res) => {
+  const rawTarget = req.query.u || req.query.url;
   if (!rawTarget) return res.status(400).json({ error: 'missing target url' });
 
   let targetUrl;
@@ -296,17 +296,45 @@ app.get('/all/*/direct', async (req, res) => {
 
   const subscriber = req.query.subscriber;
   const wantsM3U = req.query.m3u === '1' || req.query.m3u === 'true';
-  console.log(`[direct] request target="${targetUrl}" subscriber=${subscriber || 'none'} m3u=${req.query.m3u}`);
+  console.log(`[direct-query] request target="${targetUrl}" subscriber=${subscriber || 'none'} m3u=${req.query.m3u}`);
 
   if (wantsM3U) {
     if (!subscriber) return res.status(400).json({ error: 'missing subscriber' });
     const active = await checkSubscription(subscriber);
     const redirectUrl = active ? targetUrl : EXPIRED_VIDEO_URL;
-    console.log(`[direct] m3u=1 subscriber=${subscriber} active=${active} -> redirect ${redirectUrl}`);
+    console.log(`[direct-query] m3u=1 subscriber=${subscriber} active=${active} -> redirect ${redirectUrl}`);
     return res.redirect(redirectUrl);
   }
 
-  console.log('[direct] no m3u param -> redirecting to target without subscription check');
+  console.log('[direct-query] no m3u param -> redirecting to target without subscription check');
+  return res.redirect(targetUrl);
+});
+
+// Direct m3u8 redirect endpoint with subscription check (query-based target)
+app.get('/all/direct', async (req, res) => {
+  const rawTarget = req.query.u || req.query.url;
+  if (!rawTarget) return res.status(400).json({ error: 'missing target url' });
+
+  let targetUrl;
+  try {
+    targetUrl = decodeURIComponent(rawTarget);
+  } catch (e) {
+    targetUrl = rawTarget;
+  }
+
+  const subscriber = req.query.subscriber;
+  const wantsM3U = req.query.m3u === '1' || req.query.m3u === 'true';
+  console.log(`[direct-query] request target="${targetUrl}" subscriber=${subscriber || 'none'} m3u=${req.query.m3u}`);
+
+  if (wantsM3U) {
+    if (!subscriber) return res.status(400).json({ error: 'missing subscriber' });
+    const active = await checkSubscription(subscriber);
+    const redirectUrl = active ? targetUrl : EXPIRED_VIDEO_URL;
+    console.log(`[direct-query] m3u=1 subscriber=${subscriber} active=${active} -> redirect ${redirectUrl}`);
+    return res.redirect(redirectUrl);
+  }
+
+  console.log('[direct-query] no m3u param -> redirecting to target without subscription check');
   return res.redirect(targetUrl);
 });
 
